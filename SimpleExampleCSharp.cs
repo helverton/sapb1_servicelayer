@@ -1,4 +1,5 @@
 using System.IO;
+using System.IO;
 using System.Net;
 using Newtonsoft.Json;
 using System.Collections.Generic;
@@ -75,35 +76,140 @@ namespace HelvertonSantos.Main
             return obj;
         }
 
-        public dynamic GetOrder(int docEntry)
+        public dynamic Order(int docEntry)
         {
             B1SLSession obj = Session("SBO_DEMO", "manager", "123456");
 
-            var httpWebGetRequest = (HttpWebRequest)WebRequest.Create($"https://host*:50000/b1s/v2/Orders({docEntry})");
-            httpWebGetRequest.ContentType = "application/json";
+            HttpWebRequest httpWebGetRequest = (HttpWebRequest)WebRequest.Create($"https://host*:50000/b1s/v2/Orders({docEntry})");
             httpWebGetRequest.Method = "GET";
             httpWebGetRequest.KeepAlive = true;
             httpWebGetRequest.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-            httpWebGetRequest.Headers.Add("B1S-WCFCompatible", "true");
-            httpWebGetRequest.Headers.Add("B1S-MetadataWithoutSession", "true");
             httpWebGetRequest.Accept = "*/*";
             httpWebGetRequest.ServicePoint.Expect100Continue = false;
-            httpWebGetRequest.Headers.Add("Accept-Encoding", "gzip, deflate, br");
             httpWebGetRequest.AutomaticDecompression = DecompressionMethods.GZip;
+
+            httpWebGetRequest.Headers.Add("B1S-WCFCompatible", "true");
+            httpWebGetRequest.Headers.Add("B1S-MetadataWithoutSession", "true");
+            httpWebGetRequest.Headers.Add("Accept-Encoding", "gzip, deflate, br");
+
             CookieContainer cookies = new CookieContainer();
             cookies.Add(new Cookie("B1SESSION", obj.SessionId.ToString()) { Domain = "host*" });
             cookies.Add(new Cookie("ROUTEID", ".node1") { Domain = "host*" });
             httpWebGetRequest.CookieContainer = cookies;
-            var httpGetResponse = (HttpWebResponse)httpWebGetRequest.GetResponse();
+
+            httpWebGetRequest.ContentType = "application/json";
+            HttpWebResponse httpGetResponse = (HttpWebResponse)httpWebGetRequest.GetResponse();
+
             dynamic objDocument = null;
-            using (var streamReader = new StreamReader(httpGetResponse.GetResponseStream()))
+            using (StreamReader streamReader = new StreamReader(httpGetResponse.GetResponseStream()))
             {
                 var result = streamReader.ReadToEnd();
                 objDocument = JsonConvert.DeserializeObject<B1SLOrder>(result);
             }
 
+            return objDocument;
+        }
+    }
+
+    public class B1SL_Patch
+    {
+        public dynamic Order(int docEntry, object order)
+        {
+            B1SLSession obj = Session("SBO_DEMO", "manager", "123456");
+
+            HttpWebRequest httpWebGetRequest = (HttpWebRequest)WebRequest.Create($"https://host*:50000/b1s/v2/Orders({docEntry})");
+            httpWebGetRequest.Method = "PATCH";
+            httpWebGetRequest.KeepAlive = true;
+            httpWebGetRequest.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+            httpWebGetRequest.Accept = "*/*";
+            httpWebGetRequest.ServicePoint.Expect100Continue = false;
+            httpWebGetRequest.AutomaticDecompression = DecompressionMethods.GZip;
+
+            httpWebGetRequest.Headers.Add("B1S-WCFCompatible", "true");
+            httpWebGetRequest.Headers.Add("B1S-MetadataWithoutSession", "true");
+            httpWebGetRequest.Headers.Add("Accept-Encoding", "gzip, deflate, br");
+
+            CookieContainer cookies = new CookieContainer();
+            cookies.Add(new Cookie("B1SESSION", obj.SessionId.ToString()) { Domain = "host*" });
+            cookies.Add(new Cookie("ROUTEID", ".node1") { Domain = "host*" });
+            httpWebGetRequest.CookieContainer = cookies;
+
+            string strbody = JsonConvert.SerializeObject(order);
+            Encoding encoding = Encoding.Default;
+            byte[] buffer = encoding.GetBytes(strbody);
+            Stream dataStream = httpWebGetRequest.GetRequestStream();
+            dataStream.Write(buffer, 0, buffer.Length);
+            dataStream.Close();
+
+            httpWebGetRequest.ContentType = "application/json";
+            HttpWebResponse httpGetResponse = (HttpWebResponse)httpWebGetRequest.GetResponse();
+
+            SL_Order objDocument = null;
+            using (StreamReader streamReader = new StreamReader(httpGetResponse.GetResponseStream(), Encoding.Default))
+            {
+                var result = streamReader.ReadToEnd();
+                objDocument = JsonConvert.DeserializeObject<SL_Order>(result);
+            }
 
             return objDocument;
+        }
+    }
+
+    public class B1SL_Aply
+    {
+        public void UpdateOrder()
+        {
+            try
+            {
+                //Get
+                B1SL_Get get = new B1SL_Get();
+                //Object as OData Order SL 
+                B1SL_Order ordrG = get.Order(123456);
+                //Get
+
+
+                //Read
+                //Using List C#
+                List<List<Documentline>> splitUsages = ordrG.DocumentLines.OrderBy(y => y.Usage)
+                                                                          .GroupBy(l => l.Usage)
+                                                                          .Select(group => group.ToList())
+                                                                          .ToList();
+                
+                //Read data main
+                string strCardCode = ordrG.CardCode;
+                string strCardName = ordrG.CardName;
+
+                
+                //Update data in line
+                foreach (var line in ordrG.DocumentLines)
+                {
+                    string strItemCode = line.ItemCode;
+                }
+
+
+                foreach (var lst in splitUsages)
+                {
+                    if (lst.First().Usage == 10)
+                    {
+                        var DocTotal = lst.Select(x => x.LineTotal).Sum();
+                    }
+                }
+                //Read
+
+
+                //Patch
+                dynamic tst = new System.Dynamic.ExpandoObject();
+                //Update data main
+                tst.Comments = "Test SL";
+                tst.DiscountPercent = 0;
+
+                //Update data in line
+                tst.DocumentLines = ordrG.DocumentLines.Select(x => { dynamic aux = new System.Dynamic.ExpandoObject(); aux.LineNum = x.LineNum; aux.WarehouseCode = "03"; return aux; }).ToList();
+
+                B1SL_Patch ordrP = new B1SL_Patch();
+                ordrP.Order(123456, tst);
+                //Patch
+            }
         }
     }
 }
