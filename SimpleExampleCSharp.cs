@@ -79,7 +79,7 @@ namespace HelvertonSantos.Main
         {
             B1SLSession obj = Session("SBO_DEMO", "manager", "123456");
 
-            var httpWebGetRequest = (HttpWebRequest)WebRequest.Create("https://host*:50000/b1s/v2/Orders(127142)");
+            var httpWebGetRequest = (HttpWebRequest)WebRequest.Create($"https://host*:50000/b1s/v2/Orders({docEntry})");
             httpWebGetRequest.ContentType = "application/json";
             httpWebGetRequest.Method = "GET";
             httpWebGetRequest.KeepAlive = true;
