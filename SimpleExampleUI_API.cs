@@ -29,6 +29,10 @@ namespace HelvertonSantos.Main
 
                 //Aqui pegamos uma sessão do service layer
                 string SLContextSSO = SboApplication.Company.GetServiceLayerConnectionContext("https://host*:50000/b1s/v2");
+                var dataSSO = SLContextSSO.Split(';');
+                //B1SESSION=fs54g5s6-d5d4-a32a-888-000sa5s54s52c;;HttpOnly;path=/b1s/v2;Secure;SameSite=None;ROUTEID=.node5
+                //cookies.Add(new Cookie(dataSSO[0].Split('=')[0], dataSSO[0].Split('=')[1]) { Domain = "database.ibg.lan" });
+                //cookies.Add(new Cookie(dataSSO[6].Split('=')[0], dataSSO[6].Split('=')[1]) { Domain = "database.ibg.lan" });
 
                 SboApplication.StatusBar.SetText("Conexão do add-on StartAct_Add_On realizado com sucesso.", BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
 
