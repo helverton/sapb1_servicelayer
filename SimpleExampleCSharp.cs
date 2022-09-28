@@ -1,6 +1,9 @@
-using System.IO;
+
+using System;
 using System.IO;
 using System.Net;
+using System.Text;
+using System.Linq;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
@@ -26,17 +29,19 @@ namespace HelvertonSantos.Main
         public int DocEntry { get; set; }
         public string CardCode { get; set; }
         public string CardName { get; set; }
-        public List<DocumentLines> DocumentLines { get; set; }
+        public List<Documentline> DocumentLines { get; set; }
     }
 
-    public class DocumentLines
+    public class Documentline
     {
         public int LineNum { get; set; }
         public string ItemCode { get; set; }
         public double Quantity { get; set; }
+        public int Usage { get; set; }
+        public double LineTotal { get; set; }
     }
 
-    public class B1SL_Get
+    public class B1SL_Req
     {
         private B1SLSession Session(string companyDb, string UsrName, string Psswrd)
         {
@@ -76,7 +81,7 @@ namespace HelvertonSantos.Main
             return obj;
         }
 
-        public dynamic Order(int docEntry)
+        public dynamic OrderGetAsync(int docEntry)
         {
             B1SLSession obj = Session("SBO_DEMO", "manager", "123456");
 
@@ -100,7 +105,7 @@ namespace HelvertonSantos.Main
             httpWebGetRequest.ContentType = "application/json";
             HttpWebResponse httpGetResponse = (HttpWebResponse)httpWebGetRequest.GetResponse();
 
-            dynamic objDocument = null;
+            B1SLOrder objDocument = null;
             using (StreamReader streamReader = new StreamReader(httpGetResponse.GetResponseStream()))
             {
                 var result = streamReader.ReadToEnd();
@@ -109,11 +114,8 @@ namespace HelvertonSantos.Main
 
             return objDocument;
         }
-    }
 
-    public class B1SL_Patch
-    {
-        public dynamic Order(int docEntry, object order)
+        public void OrderPatchAsync(int docEntry, object order)
         {
             B1SLSession obj = Session("SBO_DEMO", "manager", "123456");
 
@@ -144,27 +146,29 @@ namespace HelvertonSantos.Main
             httpWebGetRequest.ContentType = "application/json";
             HttpWebResponse httpGetResponse = (HttpWebResponse)httpWebGetRequest.GetResponse();
 
-            SL_Order objDocument = null;
             using (StreamReader streamReader = new StreamReader(httpGetResponse.GetResponseStream(), Encoding.Default))
             {
                 var result = streamReader.ReadToEnd();
-                objDocument = JsonConvert.DeserializeObject<SL_Order>(result);
             }
-
-            return objDocument;
         }
-    }
 
-    public class B1SL_Aply
-    {
         public void UpdateOrder()
         {
             try
             {
+
+            }
+            catch (System.Exception)
+            {
+
+                throw;
+            }
+
+            try
+            {
                 //Get
-                B1SL_Get get = new B1SL_Get();
                 //Object as OData Order SL 
-                B1SL_Order ordrG = get.Order(123456);
+                B1SLOrder ordrG = OrderGetAsync(123456);
                 //Get
 
 
@@ -174,12 +178,12 @@ namespace HelvertonSantos.Main
                                                                           .GroupBy(l => l.Usage)
                                                                           .Select(group => group.ToList())
                                                                           .ToList();
-                
+
                 //Read data main
                 string strCardCode = ordrG.CardCode;
                 string strCardName = ordrG.CardName;
 
-                
+
                 //Update data in line
                 foreach (var line in ordrG.DocumentLines)
                 {
@@ -206,9 +210,12 @@ namespace HelvertonSantos.Main
                 //Update data in line
                 tst.DocumentLines = ordrG.DocumentLines.Select(x => { dynamic aux = new System.Dynamic.ExpandoObject(); aux.LineNum = x.LineNum; aux.WarehouseCode = "03"; return aux; }).ToList();
 
-                B1SL_Patch ordrP = new B1SL_Patch();
-                ordrP.Order(123456, tst);
+                OrderPatchAsync(123456, tst);
                 //Patch
+            }
+            catch (Exception e)
+            {
+                var error = e.Message;
             }
         }
     }
